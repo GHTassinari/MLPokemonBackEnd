@@ -1,48 +1,29 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import joblib
 import pandas as pd
-import os
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+import pickle
 
-app = Flask(__name__)
-CORS(app)
+df = pd.read_csv('Pokemon.csv')
 
-try:
-    model = joblib.load('pokemon_model.pkl')
-except Exception as e:
-    model = None
+features = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed', 'Generation']
+target = 'Legendary'
 
-@app.route('/')
-def home():
-    return "API Pokemon Lendário"
+X = df[features]
+y = df[target].astype(int)
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    if not model:
-        return jsonify({'Modelo não foi carregado'}), 500
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = DecisionTreeClassifier()
+model.fit(X_train, y_train)
 
-    try:
-        data = request.get_json()
-        
-        valores_entrada = [
-            float(data.get('hp')),
-            float(data.get('attack')),
-            float(data.get('defense')),
-            float(data.get('sp_atk')),
-            float(data.get('sp_def')),
-            float(data.get('speed')),
-            float(data.get('generation'))
-        ]
+names = {
+    0: "COMUM",
+    1: "LENDÁRIO"
+}
 
-        predicao = model.predict([valores_entrada])[0]
-        
-        resultado = "LENDÁRIO" if predicao else "Comum"
-        
-        return jsonify({'resultado': resultado})
+with open('model.pkl', 'wb') as f:
+    pickle.dump(model, f)
 
-    except Exception as e:
-        return jsonify({'erro': str(e)}), 400
+with open('names.pkl', 'wb') as f:
+    pickle.dump(names, f)
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+print("Arquivos 'model.pkl' e 'names.pkl' gerados com sucesso!")
